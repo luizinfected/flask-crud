@@ -1,6 +1,13 @@
 from flask import Blueprint, render_template, request
-from database.cliente import CLIENTES
+from database.database import db, Usuario
 
+db.connect()
+
+db.create_tables([Usuario])
+
+# usuario = Usuario.create(nome="Luiz Costa", email='luiz@gmail.com')
+# usuario3 = Usuario.create(nome="Maik Carvalho", email='maik@gmail.com')
+# usuario4 = Usuario.create(nome="Vinicius", email='vinicius@gmail.com')
 
 cliente_route = Blueprint('cliente', __name__)
 
@@ -13,73 +20,58 @@ cliente_route = Blueprint('cliente', __name__)
 #   - /clientes/<id>/update (PUT) - atualizar os dados do cliente
 #   - /clientes/<id>/delete (DELETE) - delete o registro do usuário
 
+
 @cliente_route.route('/')
 def lista_clientes():
-    return render_template('lista_clientes.html', clientes=CLIENTES)
-    # return 'retornar todos clientes'
+    lista_usuarios = Usuario.select()
+    return render_template('lista_clientes.html', clientes=lista_usuarios)
+
 
 
 @cliente_route.route('/', methods=['POST'])
 def inserir_cliente():
-    # return 'inserir cliente no bd'
     data = request.json
-
-    novo_usuario = {
-        "id": len(CLIENTES) + 1,
-        "nome": data['nome'],
-        "email": data['email']
-    }
-
-    CLIENTES.append(novo_usuario)
-
+    novo_usuario = Usuario.create(nome=data["nome"], email=data["email"])
     return render_template('item_cliente.html', cliente=novo_usuario)
+
 
 
 @cliente_route.route('/new', methods=['GET'])
 def form_cliente():
     return render_template('form_cliente.html')
-    # return 'formulario para criar um cliente'
-    
+
+
 
 @cliente_route.route('/<int:cliente_id>', methods=['GET'])
 def detalhe_cliente(cliente_id):
-    cliente = list(filter(lambda c: c['id'] == cliente_id, CLIENTES))[0]
+    cliente = Usuario.get(Usuario.id == cliente_id)
+    print(cliente)
     return render_template('detalhe_cliente.html', cliente=cliente)
-    # return 'exibir detalhes do cliente'
+
 
 
 @cliente_route.route('/<int:cliente_id>/edit', methods=['GET'])
 def form_edit_cliente(cliente_id):
-    cliente = None
-    for c in CLIENTES:
-        if c['id'] == cliente_id:
-            cliente = c
+    cliente = Usuario.get(Usuario.id == cliente_id)
     return render_template('form_cliente.html', cliente=cliente)
-    # return 'formulário para editar um cliente'
+
 
 
 @cliente_route.route('/<int:cliente_id>/update', methods=['PUT'])
 def atualizar_cliente(cliente_id):
-    
-    cliente_editado = None
 
-    # obter dados do form de edicao
+    cliente = Usuario.get(Usuario.id == cliente_id)
+
     data = request.json
+  
+    cliente.nome = data['nome']
+    cliente.email = data['email']
 
-    # obter usuario pelo id
-    for c in CLIENTES:
-        if c['id'] == cliente_id:
-            c['nome'] = data['nome']
-            c['email'] = data['email']
+    cliente.save()
+    return render_template('item_cliente.html', cliente=cliente)
 
-            cliente_editado = c
-
-    # editar usuario
-    return render_template('item_cliente.html', cliente=cliente_editado)
 
 
 @cliente_route.route('/<int:cliente_id>/delete', methods=['DELETE'])
 def delete_cliente(cliente_id):
-    global CLIENTES
-    CLIENTES = [c for c in CLIENTES if c['id'] != cliente_id]
-    return 'deletar um cliente pelo id'    
+    Usuario.delete_by_id(cliente_id)
